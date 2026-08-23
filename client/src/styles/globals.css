@@ -1,0 +1,101 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Primary */
+    --color-primary: #0052cc;
+    --color-primary-hover: #0747a6;
+    --color-primary-subtle: #deebff;
+    --color-primary-foreground: #ffffff;
+
+    /* Surface */
+    --color-surface: #ffffff;
+    --color-surface-raised: #f7f8fa;
+    --color-surface-overlay: #f4f5f7;
+
+    /* Border */
+    --color-border: #dfe1e6;
+    --color-border-strong: #b3bac5;
+
+    /* Text */
+    --color-text-primary: #172b4d;
+    --color-text-secondary: #5e6c84;
+    --color-text-disabled: #a5adba;
+
+    /* Status */
+    --color-success: #00875a;
+    --color-success-subtle: #e3fcef;
+    --color-warning: #ff991f;
+    --color-warning-subtle: #fffae6;
+    --color-danger: #de350b;
+    --color-danger-subtle: #ffebe6;
+
+    /* Spacing (base 4px) */
+    --space-1: 4px;
+    --space-2: 8px;
+    --space-3: 12px;
+    --space-4: 16px;
+    --space-5: 20px;
+    --space-6: 24px;
+    --space-8: 32px;
+    --space-10: 40px;
+    --space-12: 48px;
+    --space-16: 64px;
+
+    /* Border radius */
+    --radius-sm: 4px;
+    --radius-md: 6px;
+    --radius-lg: 8px;
+    --radius-xl: 12px;
+
+    /* Shadows */
+    --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.08);
+    --shadow-dropdown: 0 4px 12px rgba(0, 0, 0, 0.1);
+    --shadow-modal: 0 8px 24px rgba(0, 0, 0, 0.12);
+
+    /* Layout */
+    --sidebar-width: 240px;
+    --content-max-width: 1280px;
+  }
+
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    @apply bg-surface-raised font-sans text-body text-text-primary;
+    margin: 0;
+    min-height: 100vh;
+  }
+
+  #root {
+    min-height: 100vh;
+  }
+
+  h1 {
+    @apply text-display text-text-primary;
+  }
+
+  h2 {
+    @apply text-heading text-text-primary;
+  }
+
+  h3 {
+    @apply text-subheading text-text-primary;
+  }
+}
+
+@layer utilities {
+  .focus-ring {
+    @apply outline-none ring-2 ring-primary ring-offset-2 ring-offset-surface;
+  }
+}

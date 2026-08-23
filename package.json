@@ -1,0 +1,17 @@
+{
+  "name": "sahyog",
+  "private": true,
+  "description": "Jharkhand Societal Innovation Collaboration Portal",
+  "scripts": {
+    "setup": "node scripts/setup.js",
+    "setup:env": "node scripts/prompt-env.js --force",
+    "dev": "node scripts/dev.js",
+    "seed": "npm run seed --prefix server"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
