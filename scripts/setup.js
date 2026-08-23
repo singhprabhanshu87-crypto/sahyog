@@ -1,14 +1,13 @@
 #!/usr/bin/env node
 /**
- * First-time setup after cloning the repo.
- * Usage: npm run setup
+ * First-time setup — install deps, verify cloud .env, seed Atlas.
+ * No Docker. No interactive prompts. Uses server/.env (Atlas + Upstash).
  */
 import { spawnSync } from 'node:child_process';
-import { copyFileSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { randomBytes } from 'node:crypto';
-import { promptEnvKeys } from './prompt-env.js';
+import { ensureEnvFiles, validateCloudEnv, maskUrl } from './lib/env-check.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = join(__dirname, '..');
@@ -30,31 +29,7 @@ function run(cmd, args, cwd = root) {
   }
 }
 
-function tryRun(cmd, args, cwd = root) {
-  const result = spawnSync(cmd, args, {
-    cwd,
-    stdio: 'inherit',
-    shell: process.platform === 'win32',
-  });
-  return result.status === 0;
-}
-
-function ensureEnvFile() {
-  const example = join(serverDir, '.env.example');
-  const envPath = join(serverDir, '.env');
-
-  if (!existsSync(example)) {
-    log('Warning: server/.env.example not found — skip env setup');
-    return;
-  }
-
-  if (!existsSync(envPath)) {
-    copyFileSync(example, envPath);
-    log('Created server/.env from .env.example');
-  }
-}
-
-async function main() {
+function main() {
   console.log('\n🌱 Sahyog — setup\n');
 
   const nodeMajor = Number(process.versions.node.split('.')[0]);
@@ -63,49 +38,42 @@ async function main() {
     process.exit(1);
   }
 
-  log('Installing root dependencies…');
+  log('Installing dependencies…');
   run('npm', ['install'], root);
-
-  log('Installing server dependencies…');
   run('npm', ['install'], serverDir);
-
-  log('Installing client dependencies…');
   run('npm', ['install'], clientDir);
 
-  ensureEnvFile();
-  await promptEnvKeys();
+  const { serverEnv } = ensureEnvFiles({ serverDir, clientDir, log });
 
-  log('Starting MongoDB + Redis (Docker)…');
-  const dockerOk = tryRun('docker', ['compose', 'up', '-d'], root);
-  if (!dockerOk) {
-    console.log(
-      '\n⚠ Docker not available or compose failed.',
-      'Start MongoDB and Redis manually, or install Docker Desktop.',
-      '\n  Mongo: mongodb://localhost:27017/sahyog',
-      '\n  Redis: redis://localhost:6379',
-    );
-  } else {
-    log('Waiting for databases to be ready…');
-    spawnSync('node', ['-e', 'setTimeout(() => {}, 5000)'], { stdio: 'inherit', shell: true });
+  if (!existsSync(serverEnv)) {
+    console.error('\n❌ server/.env not found. Copy server/.env.example and add your cloud URLs.\n');
+    process.exit(1);
   }
 
-  log('Seeding database…');
-  const seedOk = tryRun('npm', ['run', 'seed'], serverDir);
-  if (!seedOk) {
-    console.log(
-      '\n⚠ Seed failed — databases may not be running yet.',
-      'After Mongo is up, run: npm run seed',
-    );
+  const { env, errors } = validateCloudEnv(serverEnv);
+  if (errors.length) {
+    console.error('\n❌ server/.env configuration:\n');
+    errors.forEach((e) => console.error(`   • ${e}`));
+    console.error('\n   Use MongoDB Atlas + Upstash URLs in server/.env (no local Docker).\n');
+    process.exit(1);
+  }
+
+  console.log('\n── Cloud services (from server/.env) ──');
+  console.log(`   MongoDB: ${maskUrl(env.MONGODB_URI)}`);
+  console.log(`   Redis:   ${maskUrl(env.REDIS_URL)} (TLS=${env.REDIS_TLS ?? 'false'})`);
+
+  log('Seeding database on Atlas…');
+  try {
+    run('npm', ['run', 'seed'], serverDir);
+  } catch {
+    console.log('\n⚠ Seed failed — check Atlas network access (allow your IP) and credentials.\n');
+    process.exit(1);
   }
 
   console.log('\n✅ Setup complete!\n');
-  console.log('  Start the app:     npm run dev');
-  console.log('  Re-enter API keys: npm run setup:env');
-  console.log('  Open:              http://localhost:5173');
-  console.log('  Login:             pmu@sahyog.demo (OTP in server console)\n');
+  console.log('  Start the app:  npm run dev');
+  console.log('  Open:           http://localhost:5173');
+  console.log('  Login:          pmu@sahyog.demo (OTP in API terminal)\n');
 }
 
-main().catch((err) => {
-  console.error(err);
-  process.exit(1);
-});
+main();

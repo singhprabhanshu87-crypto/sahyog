@@ -10,39 +10,40 @@ Full-stack platform for citizen challenge intake, AI triage, institution matchin
 
 ## Quick start (teammates)
 
-**Requirements:** Node.js 20+, Docker Desktop (for MongoDB + Redis)
+**Requirements:** Node.js 20+ only. **No Docker** — uses cloud MongoDB Atlas + Upstash Redis from `server/.env`.
 
 ```bash
 git clone <repo-url>
 cd sahyog
-npm run setup    # install deps, create .env, start Docker, seed DB
-npm run dev      # API + worker + client together
+# Get server/.env from the team (not in git) — Atlas + Upstash + OpenAI + Cloudinary
+npm run setup    # install deps, verify .env, seed Atlas
+npm run dev      # start API + worker + client
 ```
 
-Open http://localhost:5173 — login with `pmu@sahyog.demo` (OTP appears in the API terminal).
+Open http://localhost:5173 — login with `pmu@sahyog.demo` (OTP in API terminal).
 
-### Environment variables
+### `server/.env` (required, not committed)
 
-Setup will prompt for API keys and write them to `server/.env`. Key variables:
+| Variable | Source |
+|----------|--------|
+| `MONGODB_URI` | MongoDB Atlas connection string |
+| `REDIS_URL` | Upstash Redis URL |
+| `REDIS_TLS` | `true` for Upstash |
+| `OPENAI_API_KEY` | OpenAI platform |
+| `CLOUDINARY_*` | Cloudinary console |
 
-| Variable | Required? | Purpose |
-|----------|-----------|---------|
-| `OPENROUTER_API_KEY` | For AI features | Triage, categorization, scope drafts, summaries |
-| `AI_MODEL_TRIAGE` etc. | No (defaults set) | OpenRouter model IDs per task |
-| `EMBEDDING_PROVIDER` | No (`local` default) | `local` \| `openai` \| `jina` for dedup/matching |
-| `OPENAI_API_KEY` | If embeddings/language = openai | Embeddings or Whisper fallback |
-| `CLOUDINARY_*` | No | Photo/video uploads (dev stub without) |
+Optional interactive fill: `npm run setup:env` (only if you need to re-enter keys).
 
-**Env files:** secrets live in `server/.env` (not committed). Client uses `client/.env` for public `VITE_*` vars only — copy from `client/.env.example`.
+**Client:** `client/.env` — public `VITE_*` vars only (`client/.env.example`).
 
-Full list: `server/.env.example`
+Full reference: `server/.env.example`
 
 ### Script shortcuts
 
 | Platform | Install | Run |
 |----------|---------|-----|
 | Any | `npm run setup` | `npm run dev` |
-| Re-enter API keys | `npm run setup:env` | — |
+| Optional: re-enter API keys | `npm run setup:env` | — |
 | Windows | `.\scripts\setup.ps1` | `.\scripts\dev.ps1` |
 | macOS/Linux | `./scripts/setup.sh` | `./scripts/dev.sh` |
 

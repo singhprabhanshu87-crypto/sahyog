@@ -1,28 +1,16 @@
 #!/usr/bin/env node
 /**
- * Run API, worker, and client together.
- * Usage: npm run dev
+ * Start API + worker + client. Uses cloud Mongo/Redis from server/.env — no Docker.
  */
-import { spawnSync, spawn } from 'node:child_process';
+import { spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { parseEnvFile, maskUrl } from './lib/env-check.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = join(__dirname, '..');
 const serverDir = join(root, 'server');
-const clientDir = join(root, 'client');
-
-function tryDocker() {
-  const result = spawnSync('docker', ['compose', 'up', '-d'], {
-    cwd: root,
-    stdio: 'pipe',
-    shell: process.platform === 'win32',
-  });
-  if (result.status === 0) {
-    console.log('▸ MongoDB + Redis started via Docker\n');
-  }
-}
 
 function main() {
   if (!existsSync(join(serverDir, 'node_modules'))) {
@@ -30,13 +18,17 @@ function main() {
     process.exit(1);
   }
 
-  if (!existsSync(join(serverDir, '.env'))) {
-    console.error('Missing server/.env. Run: npm run setup\n');
+  const serverEnv = join(serverDir, '.env');
+  if (!existsSync(serverEnv)) {
+    console.error('Missing server/.env — copy server/.env.example and add Atlas + Upstash URLs.\n');
     process.exit(1);
   }
 
+  const env = parseEnvFile(serverEnv);
+
   console.log('\n🚀 Sahyog — starting dev servers\n');
-  tryDocker();
+  console.log(`   MongoDB: ${maskUrl(env.MONGODB_URI)}`);
+  console.log(`   Redis:   ${maskUrl(env.REDIS_URL)}\n`);
 
   const concurrently = join(
     root,
@@ -56,18 +48,11 @@ function main() {
   const child = spawn(
     `"${concurrently}" -n ${names} -c ${colors} "${commands}"`,
     [],
-    {
-      cwd: root,
-      stdio: 'inherit',
-      shell: true,
-    },
+    { cwd: root, stdio: 'inherit', shell: true },
   );
 
   child.on('exit', (code) => process.exit(code ?? 0));
-
-  process.on('SIGINT', () => {
-    child.kill('SIGINT');
-  });
+  process.on('SIGINT', () => child.kill('SIGINT'));
 }
 
 main();
