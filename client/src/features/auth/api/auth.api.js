@@ -11,3 +11,7 @@ export async function verifyOtp(email, code) {
 export async function getMe() {
   return apiClient.get('/auth/me')
 }
+
+export async function logout(refreshToken) {
+  return apiClient.post('/auth/logout', refreshToken ? { refreshToken } : {})
+}

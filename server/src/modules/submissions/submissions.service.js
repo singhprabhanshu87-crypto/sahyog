@@ -87,6 +87,10 @@ export async function list({ status, districtCode, clusterId, page, limit, actor
     filter['location.districtCode'] = { $in: actor.districts };
   }
 
+  if (actor?.role === 'citizen') {
+    filter.submittedBy = actor.id;
+  }
+
   return paginate(Submission, { filter, page, limit });
 }
 

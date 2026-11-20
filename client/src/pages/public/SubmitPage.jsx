@@ -26,14 +26,13 @@ export function SubmitPage() {
 
     setLoading(true)
     try {
-      const data = await createSubmission({
+      const res = await createSubmission({
         text: text.trim(),
-        inputMode: 'text',
         locale: 'hi',
         location: { lat: Number(lat), lng: Number(lng) },
-        consentValidatorContact: consent,
+        consentGiven: true,
       })
-      setResult(data)
+      setResult(res.data)
       toast.success('Submission received')
     } catch (err) {
       toast.error(err.message ?? 'Could not submit')
@@ -64,6 +63,9 @@ export function SubmitPage() {
               <Button variant="secondary" onClick={() => { setResult(null); setText('') }}>
                 Submit another
               </Button>
+              <Link to="/">
+                <Button variant="secondary">Home</Button>
+              </Link>
             </div>
           </CardContent>
         </Card>
@@ -115,7 +117,7 @@ export function SubmitPage() {
             </label>
 
             <div className="flex gap-2">
-              <Button type="submit" disabled={loading} className="flex-1">
+              <Button type="submit" disabled={loading || !consent} className="flex-1">
                 <Send className="h-4 w-4" strokeWidth={1.5} />
                 {loading ? 'Submitting…' : 'Submit report'}
               </Button>

@@ -16,7 +16,7 @@ export function TrackPage() {
   useEffect(() => {
     if (!trackingId) return
     trackSubmission(trackingId)
-      .then(setData)
+      .then((res) => setData(res.data))
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false))
   }, [trackingId])

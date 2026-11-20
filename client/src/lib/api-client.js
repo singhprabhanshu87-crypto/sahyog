@@ -1,4 +1,8 @@
+import { useAuthStore } from '@/store/auth.store'
+
 const API_BASE = import.meta.env.VITE_API_URL ?? '/api'
+
+const NON_REFRESHABLE_PATHS = ['/auth/refresh', '/auth/otp/request', '/auth/otp/verify']
 
 class ApiError extends Error {
   constructor(message, status, data) {
@@ -9,14 +13,60 @@ class ApiError extends Error {
   }
 }
 
+let refreshPromise = null
+
+async function parseBody(response) {
+  const contentType = response.headers.get('content-type')
+  return contentType?.includes('application/json')
+    ? response.json()
+    : response.text()
+}
+
 function getAuthToken() {
-  try {
-    const stored = localStorage.getItem('sahyog-auth')
-    if (!stored) return null
-    const parsed = JSON.parse(stored)
-    return parsed?.state?.accessToken ?? parsed?.state?.token ?? null
-  } catch {
-    return null
+  return useAuthStore.getState().accessToken ?? null
+}
+
+async function refreshAccessToken() {
+  const { refreshToken } = useAuthStore.getState()
+  if (!refreshToken) {
+    throw new ApiError('No active session', 401)
+  }
+
+  if (!refreshPromise) {
+    refreshPromise = (async () => {
+      try {
+        const url = new URL(`${API_BASE}/auth/refresh`, window.location.origin).toString()
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ refreshToken }),
+        })
+        const data = await parseBody(response)
+
+        if (!response.ok) {
+          throw new ApiError(data?.message ?? 'Session expired', response.status, data)
+        }
+
+        useAuthStore.setState((prev) => ({
+          accessToken: data.accessToken,
+          refreshToken: data.refreshToken ?? prev.refreshToken,
+          user: data.user ?? prev.user,
+        }))
+
+        return data.accessToken
+      } finally {
+        refreshPromise = null
+      }
+    })()
+  }
+
+  return refreshPromise
+}
+
+function handleSessionExpired() {
+  useAuthStore.getState().logout()
+  if (!window.location.pathname.startsWith('/login')) {
+    window.location.assign('/login')
   }
 }
 
@@ -32,26 +82,41 @@ async function request(path, options = {}) {
     })
   }
 
-  const token = getAuthToken()
-  const requestHeaders = {
-  'Content-Type': 'application/json',
-    ...headers,
+  const send = async () => {
+    const requestHeaders = {
+      'Content-Type': 'application/json',
+      ...headers,
+    }
+
+    const token = getAuthToken()
+    if (token) {
+      requestHeaders.Authorization = `Bearer ${token}`
+    }
+
+    return fetch(url.toString(), {
+      method,
+      headers: requestHeaders,
+      body: body ? JSON.stringify(body) : undefined,
+    })
   }
 
-  if (token) {
-    requestHeaders.Authorization = `Bearer ${token}`
+  let response = await send()
+
+  const canRefresh =
+    response.status === 401 &&
+    !NON_REFRESHABLE_PATHS.some((p) => path.startsWith(p))
+
+  if (canRefresh) {
+    try {
+      await refreshAccessToken()
+      response = await send()
+    } catch (err) {
+      handleSessionExpired()
+      throw err instanceof ApiError ? err : new ApiError('Session expired', 401)
+    }
   }
 
-  const response = await fetch(url.toString(), {
-    method,
-    headers: requestHeaders,
-    body: body ? JSON.stringify(body) : undefined,
-  })
-
-  const contentType = response.headers.get('content-type')
-  const data = contentType?.includes('application/json')
-    ? await response.json()
-    : await response.text()
+  const data = await parseBody(response)
 
   if (!response.ok) {
     throw new ApiError(

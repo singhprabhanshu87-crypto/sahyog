@@ -28,6 +28,9 @@ export const submissionsPolicy = {
       if (['facilitator', 'community_validator'].includes(actor.role)) {
         return { allowed: true, projection: 'assignee' };
       }
+      if (actor.role === 'citizen') {
+        return { allowed: true, projection: 'assignee' };
+      }
       return { allowed: false, reason: 'Insufficient permissions' };
     }
 

@@ -1,3 +1,4 @@
+import './dns-bootstrap.js';
 import mongoose from 'mongoose';
 import config from './index.js';
 import logger from '../common/lib/logger.js';
@@ -24,8 +25,17 @@ export async function connectDatabase() {
     isConnected = false;
   });
 
+  mongoose.connection.on('reconnected', () => {
+    logger.info('MongoDB reconnected');
+  });
+
   await mongoose.connect(config.MONGODB_URI, {
     dbName: config.MONGODB_DB_NAME,
+    serverSelectionTimeoutMS: 30000,
+    connectTimeoutMS: 30000,
+    heartbeatFrequencyMS: 10000,
+    maxPoolSize: 10,
+    family: 4,
   });
 
   isConnected = true;
